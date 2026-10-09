@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PLANO — Multi-Asset Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#14171A;
+    --panel:#1B1F23;
+    --panel-alt:#22262B;
+    --panel-alt2:#282D33;
+    --border:#2E3338;
+    --border-soft:#252A2F;
+    --text:#ECE9E2;
+    --text-muted:#868D94;
+    --text-dim:#5B6167;
+    --accent:#F2B705;
+    --accent-dim:#8A6E17;
+    --accent-blue:#4C8CA8;
+    --success:#6FA96A;
+    --danger:#B33A3A;
+    --danger-soft:#3A2224;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  ::selection{background:var(--accent);color:#14171A;}
+  h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-0.01em;}
+  code,.mono,input.mono,textarea.mono,.json-view,.chip .id{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea,button{font-size:13px;color:var(--text);}
+  input,textarea{
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:7px 9px;
+    color:var(--text);
+    outline:none;
+  }
+  input:focus,textarea:focus{border-color:var(--accent-dim);}
+  ::placeholder{color:var(--text-dim);}
+  a{color:var(--accent-blue);}
+
+  /* ---------- layout shell ---------- */
+  #app{min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#181B1E,#15181B);
+    position:sticky;top:0;z-index:40;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{
+    width:22px;height:22px;border-radius:3px;background:var(--accent);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk';font-weight:700;font-size:12px;color:#14171A;
+  }
+  .brand h1{font-size:16px;color:var(--text);}
+  .brand .eyebrow{font-size:10.5px;letter-spacing:.14em;color:var(--text-muted);text-transform:uppercase;}
+  .topbar-right{display:flex;gap:10px;align-items:center;}
+  .stat-pill{
+    font-family:'JetBrains Mono';font-size:11px;color:var(--text-muted);
+    border:1px solid var(--border);border-radius:20px;padding:5px 11px;
+    display:flex;gap:6px;align-items:center;
+  }
+  .stat-pill b{color:var(--text);}
+  .stat-pill:hover{border-color:var(--accent-dim);color:var(--text);cursor:pointer;}
+
+  .btn{
+    border:1px solid var(--border);background:var(--panel-alt);color:var(--text);
+    border-radius:5px;padding:8px 14px;font-weight:500;transition:.12s;
+  }
+  .btn:hover{border-color:#454b52;background:var(--panel-alt2);}
+  .btn-accent{background:var(--accent);border-color:var(--accent);color:#14171A;font-weight:600;}
+  .btn-accent:hover{background:#ffc72e;border-color:#ffc72e;}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--text-muted);}
+  .btn-ghost:hover{color:var(--text);background:var(--panel-alt);}
+  .btn-danger{background:transparent;border-color:var(--danger);color:#e08a83;}
+  .btn-danger:hover{background:var(--danger-soft);}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:4px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  main{flex:1;padding:26px;max-width:1400px;margin:0 auto;width:100%;}
+
+  /* ---------- setup screen ---------- */
+  .setup-wrap{max-width:760px;margin:20px auto;}
+  .setup-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:30px 32px;
+  }
+  .setup-card h2{font-size:20px;margin-bottom:4px;}
+  .setup-card .sub{color:var(--text-muted);font-size:12.5px;margin-bottom:26px;}
+  .field-row{margin-bottom:22px;}
+  .field-label{
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);
+    margin-bottom:8px;display:flex;align-items:center;gap:8px;
+  }
+  .field-label .num{
+    width:16px;height:16px;border-radius:50%;background:var(--panel-alt2);
+    display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;color:var(--accent);
+  }
+  input#assetIdInput{width:220px;font-family:'JetBrains Mono';font-size:14px;}
+  .case-options{display:flex;gap:10px;}
+  .case-opt{
+    border:1px solid var(--border);background:var(--panel-alt);border-radius:6px;
+    padding:10px 18px;cursor:pointer;font-family:'JetBrains Mono';font-size:14px;color:var(--text-muted);
+  }
+  .case-opt.active{border-color:var(--accent);color:var(--accent);background:#2a2410;}
+  .facing-options{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .facing-chip{
+    border:1px solid var(--border);background:var(--panel-alt);border-radius:6px;
+    padding:9px 16px;cursor:pointer;font-family:'JetBrains Mono';font-size:13px;color:var(--text-muted);
+    display:flex;align-items:center;gap:7px;user-select:none;
+  }
+  .facing-chip.active{border-color:var(--accent-blue);color:#bfe0ee;background:#16262c;}
+  .facing-chip .box{width:12px;height:12px;border:1px solid currentColor;border-radius:2px;}
+  .facing-chip.active .box{background:var(--accent-blue);border-color:var(--accent-blue);}
+  .add-facing{display:flex;gap:6px;align-items:center;}
+  .add-facing input{width:60px;font-family:'JetBrains Mono';}
+  .image-inputs{display:flex;flex-direction:column;gap:10px;}
+  .image-input-row{display:flex;align-items:center;gap:10px;}
+  .image-input-row .flabel{
+    font-family:'JetBrains Mono';font-size:11.5px;color:var(--accent-blue);width:64px;flex-shrink:0;
+  }
+  .image-input-row input{flex:1;font-family:'JetBrains Mono';font-size:12px;}
+  .setup-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
+  .hint{font-size:11.5px;color:var(--text-dim);margin-top:6px;}
+
+  /* ---------- products panel button + drawer ---------- */
+  .drawer-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:flex;justify-content:flex-end;
+  }
+  .drawer{
+    width:440px;max-width:92vw;background:var(--panel);border-left:1px solid var(--border);
+    height:100%;overflow-y:auto;padding:22px 22px 60px;
+  }
+  .drawer h3{font-size:15px;margin-bottom:2px;}
+  .drawer .sub{color:var(--text-muted);font-size:12px;margin-bottom:18px;}
+  .drawer section{margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--border-soft);}
+  .drawer section:last-child{border-bottom:none;}
+  .drawer label.small{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px;}
+  .dropzone{
+    border:1.5px dashed var(--border);border-radius:7px;padding:20px;text-align:center;color:var(--text-muted);
+    font-size:12.5px;
+  }
+  .dropzone b{color:var(--accent);}
+  textarea#pasteArea{width:100%;height:80px;font-size:11.5px;resize:vertical;}
+  .manual-add{display:flex;gap:6px;margin-top:8px;}
+  .manual-add input{flex:1;}
+  .product-table{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px;}
+  .product-table th{text-align:left;color:var(--text-dim);font-weight:500;padding:4px 6px;border-bottom:1px solid var(--border-soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;}
+  .product-table td{padding:5px 6px;border-bottom:1px solid var(--border-soft);}
+  .product-table td.pid{font-family:'JetBrains Mono';color:var(--accent-blue);}
+  .product-table tr:hover{background:var(--panel-alt);}
+  .product-table .del{color:var(--danger);cursor:pointer;opacity:.6;}
+  .product-table .del:hover{opacity:1;}
+  .table-scroll{max-height:220px;overflow-y:auto;}
+
+  /* ---------- build screen ---------- */
+  .build-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
+  .build-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .asset-badge{
+    font-family:'JetBrains Mono';font-size:13px;background:var(--panel-alt);border:1px solid var(--border);
+    border-radius:5px;padding:6px 12px;color:var(--accent);
+  }
+  .meta-tag{font-size:11px;color:var(--text-muted);border:1px solid var(--border-soft);border-radius:4px;padding:4px 9px;}
+  .build-actions{display:flex;gap:8px;}
+
+  .build-grid{display:grid;grid-template-columns:minmax(320px,42%) 1fr;gap:20px;align-items:start;}
+  @media(max-width:980px){.build-grid{grid-template-columns:1fr;}}
+
+  .image-panel{
+    position:sticky;top:78px;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:16px;
+  }
+  .facing-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .facing-tab{
+    padding:6px 13px;border-radius:5px;font-family:'JetBrains Mono';font-size:12px;color:var(--text-muted);
+    border:1px solid var(--border);background:var(--panel-alt);cursor:pointer;
+  }
+  .facing-tab.active{background:var(--accent-blue);border-color:var(--accent-blue);color:#0e1e23;font-weight:600;}
+  .image-frame{
+    border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;background:
+      repeating-conic-gradient(#20242a 0% 25%, #1c2025 0% 50%) 50%/16px 16px;
+    min-height:260px;display:flex;align-items:center;justify-content:center;
+  }
+  .image-frame img{max-width:100%;max-height:520px;display:block;}
+  .image-frame .empty{color:var(--text-dim);font-size:12px;padding:40px;text-align:center;}
+  .image-url-edit{margin-top:10px;}
+  .image-url-edit input{width:100%;font-family:'JetBrains Mono';font-size:11px;}
+
+  .right-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;}
+  .view-toggle{display:flex;gap:4px;background:var(--panel-alt);border:1px solid var(--border);border-radius:7px;padding:3px;margin-bottom:16px;width:fit-content;}
+  .view-toggle button{
+    background:transparent;border:none;padding:7px 14px;border-radius:5px;color:var(--text-muted);font-size:12px;font-weight:500;
+  }
+  .view-toggle button.active{background:var(--accent);color:#14171A;}
+
+  .rack-list{display:flex;flex-direction:column;gap:14px;}
+  .rack-card{border:1px solid var(--border-soft);border-radius:8px;background:var(--panel-alt);overflow:hidden;}
+  .rack-head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border-soft);background:var(--panel-alt2);}
+  .rack-head input{background:transparent;border:none;font-family:'Space Grotesk';font-weight:600;font-size:13.5px;color:var(--text);padding:2px 4px;width:140px;}
+  .rack-head input:focus{background:var(--panel);border-radius:3px;}
+  .rack-head .spacer{flex:1;}
+  .rack-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;}
+
+  .shelf-row{
+    position:relative;background:#191c20;border:1px solid var(--border-soft);border-radius:6px 6px 3px 3px;
+    padding:9px 9px 12px;
+    border-bottom:3px solid #3a3e44;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:38px;
+  }
+  .shelf-row .row-label{position:absolute;top:-8px;left:8px;background:var(--panel-alt);padding:0 6px;font-size:9.5px;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase;}
+  .row-remove{position:absolute;top:-8px;right:6px;background:var(--panel-alt);color:var(--text-dim);border:none;font-size:12px;padding:0 5px;border-radius:3px;}
+  .row-remove:hover{color:var(--danger);}
+  .row-copy{position:absolute;top:-8px;right:26px;background:var(--panel-alt);color:var(--text-dim);border:none;font-size:11px;padding:0 5px;border-radius:3px;}
+  .row-copy:hover{color:var(--accent);}
+
+  .chip{
+    display:flex;align-items:center;gap:6px;background:var(--panel-alt2);border:1px solid #363b41;
+    border-radius:4px;padding:5px 4px 5px 9px;font-size:11.5px;position:relative;
+  }
+  .chip::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:repeating-linear-gradient(90deg,var(--accent-dim) 0 2px, transparent 2px 4px);
+    border-radius:4px 4px 0 0;}
+  .chip .pname{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chip .count{font-family:'JetBrains Mono';color:var(--accent);font-size:10.5px;background:#2a2410;border-radius:3px;padding:1px 5px;}
+  .chip button{background:none;border:none;color:var(--text-dim);padding:1px 3px;font-size:11px;line-height:1;}
+  .chip button:hover{color:var(--text);}
+  .chip button.del:hover{color:var(--danger);}
+
+  .add-chip-btn{
+    border:1px dashed var(--border);background:transparent;color:var(--text-muted);border-radius:4px;
+    padding:6px 10px;font-size:12px;
+  }
+  .add-chip-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  .rack-footer,.rack-list-footer{display:flex;gap:8px;padding-top:2px;}
+
+  .empty-state{color:var(--text-dim);font-size:12px;padding:26px 10px;text-align:center;border:1px dashed var(--border-soft);border-radius:8px;}
+
+  /* JSON view */
+  .json-view{
+    background:#101215;border:1px solid var(--border-soft);border-radius:7px;padding:16px;
+    font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;
+  }
+  textarea.json-view{width:100%;min-height:460px;max-height:70vh;resize:vertical;}
+  .json-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+
+  /* saved assets strip */
+  .saved-strip{margin-top:22px;}
+  .saved-strip h4{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+  .saved-list{display:flex;gap:10px;flex-wrap:wrap;}
+  .saved-card{
+    border:1px solid var(--border);background:var(--panel);border-radius:7px;padding:10px 12px;min-width:150px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .saved-card .aid{font-family:'JetBrains Mono';color:var(--accent);font-size:13px;}
+  .saved-card .meta{font-size:10.5px;color:var(--text-muted);}
+  .saved-card .row{display:flex;gap:6px;margin-top:2px;}
+
+  .warn-banner{
+    display:flex;gap:8px;align-items:flex-start;background:#2a220c;border:1px solid #4a3a13;color:#e0c07a;
+    padding:9px 12px;border-radius:6px;font-size:11.5px;margin-bottom:14px;
+  }
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent);color:#14171A;
+    padding:9px 18px;border-radius:6px;font-size:12.5px;font-weight:600;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.4);
+  }
+
+  /* picker modal */
+  .picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;display:flex;align-items:center;justify-content:center;}
+  .picker-modal{background:var(--panel);border:1px solid var(--border);border-radius:10px;width:420px;max-width:92vw;padding:18px;}
+  .picker-modal h4{font-size:13.5px;margin-bottom:12px;}
+  .picker-modal input#pickerSearch{width:100%;margin-bottom:10px;}
+  .picker-results{max-height:220px;overflow-y:auto;border:1px solid var(--border-soft);border-radius:6px;}
+  .picker-item{padding:8px 10px;font-size:12.5px;display:flex;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--border-soft);}
+  .picker-item:last-child{border-bottom:none;}
+  .picker-item:hover{background:var(--panel-alt);}
+  .picker-item .pid{color:var(--accent-blue);font-family:'JetBrains Mono';font-size:11px;}
+  .picker-item.selected{background:#2a2410;}
+  .picker-count-row{display:flex;align-items:center;gap:10px;margin-top:12px;}
+  .picker-count-row input{width:70px;font-family:'JetBrains Mono';}
+  .picker-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
+  .picker-empty{padding:16px;text-align:center;color:var(--text-dim);font-size:12px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================= STATE ============================= */
+let uidCounter = 1;
+const uid = () => 'r' + (uidCounter++);
+
+const state = {
+  products: [],           // {id:Number, name:String}
+  savedAssets: [],         // finished asset objects (raw schema)
+  stage: 'setup',          // 'setup' | 'build'
+  editingSavedIndex: null, // index into savedAssets when re-editing, else null
+  current: {
+    assetId: '',
+    case: 0,
+    facings: [0],
+    facingData: { 0: { imageUrl: '', racks: [] } }
+  },
+  activeFacing: 0,
+  viewMode: 'configure',   // 'configure' | 'names' | 'ids'
+  drawerOpen: false,
+  toast: null,
+  rackClipboard: null,     // last copied rack {id,name,rows}
+  rowClipboard: null       // last copied row [ids...]
+};
+
+function ensureFacingData(f){
+  if(!state.current.facingData[f]) state.current.facingData[f] = { imageUrl:'', racks: [] };
+}
+
+function resetCurrent(){
+  state.current = { assetId:'', case:0, facings:[0], facingData:{0:{imageUrl:'',racks:[]}} };
+  state.activeFacing = 0;
+  state.viewMode = 'configure';
+  state.editingSavedIndex = null;
+}
+
+function findRack(rackId){
+  const fd = state.current.facingData[state.activeFacing];
+  if(!fd) return null;
+  return fd.racks.find(r => r.id === rackId) || null;
+}
+
+/* ============================= PRODUCT IMPORT ============================= */
+function importRows(rows){
+  if(!rows || !rows.length) return;
+  let start = 0, nameFirst = true;
+  const header = rows[0].map(c => String(c||'').toLowerCase());
+  const looksHeader = header.some(h => h.includes('name') || h.includes('id'));
+  if(looksHeader){
+    const idIdx = header.findIndex(h => h.includes('id'));
+    const nameIdx = header.findIndex(h => h.includes('name'));
+    nameFirst = idIdx === -1 || (nameIdx !== -1 && nameIdx < idIdx);
+    start = 1;
+  } else {
+    nameFirst = isNaN(Number(String(rows[0][0]).trim()));
+  }
+  const out = [];
+  for(let i = start; i < rows.length; i++){
+    const r = rows[i];
+    if(!r || r.length < 2) continue;
+    let name, id;
+    if(nameFirst){ name = r[0]; id = r[1]; } else { id = r[0]; name = r[1]; }
+    id = String(id).replace(/[^0-9]/g,'');
+    name = String(name||'').trim().replace(/^"|"$/g,'');
+    if(!id || !name) continue;
+    out.push({ id: Number(id), name });
+  }
+  if(out.length){
+    // merge, replacing duplicates by id
+    const map = new Map(state.products.map(p => [p.id, p]));
+    out.forEach(p => map.set(p.id, p));
+    state.products = Array.from(map.values()).sort((a,b) => a.name.localeCompare(b.name));
+    showToast(out.length + ' products imported');
+  } else {
+    showToast('No valid rows found — expected Product Name + Product ID columns');
+  }
+  render();
+}
+
+function rowsFromText(text){
+  return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    .map(l => l.includes('\t') ? l.split('\t') : l.split(','));
+}
+
+function handleFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext === 'xlsx' || ext === 'xls'){
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type:'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+        importRows(rows);
+      }catch(err){ showToast('Could not read the Excel file'); }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => importRows(rowsFromText(e.target.result));
+    reader.readAsText(file);
+  }
+}
+
+function productMapById(){
+  const m = new Map();
+  state.products.forEach(p => m.set(p.id, p.name));
+  return m;
+}
+function nameForId(id){
+  const p = state.products.find(p => p.id === id);
+  return p ? p.name : ('#' + id + ' (unmapped)');
+}
+
+/* ============================= RUN-LENGTH HELPERS ============================= */
+function runLengthEncode(row){
+  const runs = [];
+  let i = 0;
+  while(i < row.length){
+    let j = i;
+    while(j < row.length && row[j] === row[i]) j++;
+    runs.push({ id: row[i], count: j - i, start: i });
+    i = j;
+  }
+  return runs;
+}
+function rebuildRowFromRuns(runs){
+  const out = [];
+  runs.forEach(r => { for(let k=0;k<r.count;k++) out.push(r.id); });
+  return out;
+}
+
+/* ============================= JSON BUILD ============================= */
+function buildAssetJSON(useNames){
+  const c = state.current;
+  const facings = [...c.facings].sort((a,b) => a-b);
+  return {
+    AssetDefinitionIds: [ c.assetId === '' ? null : Number(c.assetId) ],
+    Case: c.case,
+    Compliance: 50,
+    RackInversion: true,
+    Configuration: facings.map(f => {
+      const fd = c.facingData[f] || { imageUrl:'', racks:[] };
+      return {
+        Facing: f,
+        IdealPlanogramImageUrl: fd.imageUrl || '',
+        RackInformation: fd.racks.map(r => ({
+          Name: r.name,
+          Products: r.rows.map(row => useNames ? row.map(nameForId) : row.slice())
+        }))
+      };
+    })
+  };
+}
+
+/* ============================= LOAD / IMPORT ============================= */
+function loadAssetIntoBuilder(a, index){
+  const facingData = {};
+  (a.Configuration || []).forEach(f => {
+    facingData[f.Facing] = {
+      imageUrl: f.IdealPlanogramImageUrl || '',
+      racks: (f.RackInformation || []).map(r => ({
+        id: uid(),
+        name: r.Name,
+        rows: (r.Products || []).map(row => row.slice())
+      }))
+    };
+  });
+  const facings = (a.Configuration || []).map(f => f.Facing);
+  state.current = {
+    assetId: (a.AssetDefinitionIds && a.AssetDefinitionIds[0] != null) ? String(a.AssetDefinitionIds[0]) : '',
+    case: typeof a.Case === 'number' ? a.Case : 0,
+    facings: facings.length ? facings : [0],
+    facingData: Object.keys(facingData).length ? facingData : { 0: { imageUrl:'', racks:[] } }
+  };
+  state.editingSavedIndex = index;
+  state.activeFacing = state.current.facings[0];
+  state.viewMode = 'configure';
+  state.stage = 'build';
+  render();
+}
+
+function handleImportJsonFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data;
+    try{ data = JSON.parse(e.target.result); }
+    catch(err){ showToast('That file is not valid JSON'); return; }
+
+    if(Array.isArray(data)){
+      let count = 0;
+      data.forEach(a => {
+        if(a && Array.isArray(a.Configuration) && a.AssetDefinitionIds){ state.savedAssets.push(a); count++; }
+      });
+      if(count){ showToast(count + ' asset(s) imported — find them in “Saved assets” to edit'); render(); }
+      else showToast('No valid asset objects found in that file');
+    } else if(data && Array.isArray(data.Configuration)){
+      loadAssetIntoBuilder(data, null);
+      showToast('Asset #' + (data.AssetDefinitionIds ? data.AssetDefinitionIds[0] : '?') + ' loaded — edit it below');
+    } else {
+      showToast('Unrecognized JSON shape — expected an asset object or an array of them');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- apply edits typed/pasted directly into a JSON tab ---------- */
+function applyJsonEdit(text, useNames){
+  let obj;
+  try{ obj = JSON.parse(text); }
+  catch(err){ showToast('Invalid JSON — check for a stray comma or bracket'); return; }
+  if(!obj || !Array.isArray(obj.Configuration)){ showToast('JSON must include a "Configuration" array'); return; }
+
+  let unresolved = 0;
+  const facingData = {};
+  obj.Configuration.forEach(f => {
+    facingData[f.Facing] = {
+      imageUrl: f.IdealPlanogramImageUrl || '',
+      racks: (f.RackInformation || []).map(r => ({
+        id: uid(),
+        name: r.Name,
+        rows: (r.Products || []).map(row => row.map(val => {
+          if(!useNames) return Number(val) || 0;
+          const found = state.products.find(p => p.name.toLowerCase() === String(val).toLowerCase());
+          if(found) return found.id;
+          unresolved++;
+          return 0; // shows as "#0 (unmapped)" in configure view so it's easy to spot & fix
+        }))
+      }))
+    };
+  });
+
+  state.current = {
+    assetId: (obj.AssetDefinitionIds && obj.AssetDefinitionIds[0] != null) ? String(obj.AssetDefinitionIds[0]) : state.current.assetId,
+    case: typeof obj.Case === 'number' ? obj.Case : state.current.case,
+    facings: obj.Configuration.map(f => f.Facing),
+    facingData
+  };
+  state.activeFacing = state.current.facings[0];
+  render();
+  showToast(unresolved ? ('Applied — ' + unresolved + ' product name(s) not found, check Configure tab') : 'Changes applied');
+}
+
+/* ============================= RENDER ============================= */
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML =
+    topBarHTML() +
+    (state.stage === 'setup' ? setupHTML() : buildHTML()) +
+    (state.drawerOpen ? drawerHTML() : '') +
+    (state.picker ? pickerHTML() : '') +
+    (state.toast ? '<div class="toast">' + escapeHtml(state.toast) + '</div>' : '');
+
+  // live-focus helpers: nothing needed here, inputs re-render fresh each time render() runs from a click
+  if(state.picker){
+    const searchInput = document.getElementById('pickerSearch');
+    if(searchInput){ searchInput.focus(); searchInput.value = state.picker.search; }
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showToast(msg){
+  state.toast = msg;
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 2200);
+}
+
+/* ---------- top bar ---------- */
+function topBarHTML(){
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">P</span>
+      <div>
+        <h1>PLANO</h1>
+      </div>
+      <span class="eyebrow" style="margin-left:6px;">Multi-Asset Planogram Builder</span>
+    </div>
+    <div class="topbar-right">
+      <div class="stat-pill" data-action="openDrawer">Products <b>${state.products.length}</b> — manage</div>
+      <div class="stat-pill">Assets saved <b>${state.savedAssets.length}</b></div>
+      <button class="btn btn-sm" data-action="triggerImportJson">Import JSON</button>
+      <input type="file" id="importJsonInput" accept=".json" style="display:none;" />
+      ${state.savedAssets.length ? `<button class="btn btn-accent btn-sm" data-action="exportAll">Export all (${state.savedAssets.length})</button>` : ''}
+    </div>
+  </div>`;
+}
+
+/* ---------- setup screen ---------- */
+function setupHTML(){
+  const c = state.current;
+  const facingsSorted = [...c.facings].sort((a,b)=>a-b);
+  return `
+  <main>
+    <div class="setup-wrap">
+      <div class="setup-card">
+        <h2>${state.editingSavedIndex !== null ? 'Edit asset details' : 'New asset'}</h2>
+        <div class="sub">Define the asset, choose which facings it has, and drop in the reference image for each — then build the rack layout.</div>
+
+        <div class="field-row">
+          <div class="field-label"><span class="num">1</span> Asset Definition ID</div>
+          <input id="assetIdInput" class="mono" data-bind="assetId" type="text" inputmode="numeric" placeholder="e.g. 56129" value="${escapeHtml(c.assetId)}" />
+        </div>
+
+        <div class="field-row">
+          <div class="field-label"><span class="num">2</span> Case</div>
+          <div class="case-options">
+            ${[0,1,2].map(n => `<div class="case-opt ${c.case===n?'active':''}" data-action="setCase" data-value="${n}">${n}</div>`).join('')}
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-label"><span class="num">3</span> Facings <span style="opacity:.6;">(select one or more)</span></div>
+          <div class="facing-options">
+            ${[0,1,2].map(n => `
+              <div class="facing-chip ${c.facings.includes(n)?'active':''}" data-action="toggleFacing" data-value="${n}">
+                <span class="box"></span> Facing ${n}
+              </div>`).join('')}
+            <div class="add-facing">
+              <input id="customFacingInput" class="mono" type="number" placeholder="#" />
+              <button class="btn btn-sm" data-action="addCustomFacing">+ add</button>
+            </div>
+          </div>
+          <div class="hint">Each facing gets its own reference image and its own independent rack layout.</div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-label"><span class="num">4</span> Reference image per facing</div>
+          <div class="image-inputs">
+            ${facingsSorted.map(f => {
+              ensureFacingData(f);
+              return `<div class="image-input-row">
+                <span class="flabel">Facing ${f}</span>
+                <input data-bind="imageUrl" data-facing="${f}" class="mono" type="text" placeholder="https://…/ideal-planogram-image" value="${escapeHtml(c.facingData[f].imageUrl)}" />
+              </div>`;
+            }).join('') || '<div class="hint">Select at least one facing above.</div>'}
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          ${state.editingSavedIndex !== null ? `<button class="btn btn-ghost" data-action="cancelEditDetails">Cancel</button>` : ''}
+          <button class="btn btn-accent" data-action="startBuilding" ${(!c.assetId || c.facings.length===0) ? 'disabled' : ''}>
+            ${state.editingSavedIndex !== null ? 'Continue to rack builder →' : 'Start building →'}
+          </button>
+        </div>
+      </div>
+
+      ${state.savedAssets.length ? savedStripHTML(true) : ''}
+    </div>
+  </main>`;
+}
+
+/* ---------- build screen ---------- */
+function buildHTML(){
+  const c = state.current;
+  const facingsSorted = [...c.facings].sort((a,b)=>a-b);
+  if(!facingsSorted.includes(state.activeFacing)) state.activeFacing = facingsSorted[0];
+  const af = state.activeFacing;
+  ensureFacingData(af);
+  const fd = c.facingData[af];
+
+  const missingImages = facingsSorted.filter(f => !c.facingData[f] || !c.facingData[f].imageUrl);
+
+  return `
+  <main>
+    <div class="build-header">
+      <div class="build-title">
+        <div class="asset-badge">#${escapeHtml(c.assetId)}</div>
+        <div class="meta-tag">Case ${c.case}</div>
+        <div class="meta-tag">${c.facings.length} facing${c.facings.length>1?'s':''}</div>
+        <button class="btn btn-ghost btn-sm" data-action="editDetails">Edit details</button>
+      </div>
+      <div class="build-actions">
+        <button class="btn btn-ghost" data-action="newAsset">+ New asset</button>
+        <button class="btn btn-accent" data-action="saveAsset">${state.editingSavedIndex!==null ? 'Update saved asset' : 'Save asset'}</button>
+      </div>
+    </div>
+
+    ${missingImages.length ? `<div class="warn-banner">⚠ Missing reference image for Facing ${missingImages.join(', ')} — you can still build, add the URL later via “Edit details”.</div>` : ''}
+
+    <div class="build-grid">
+      <div class="image-panel">
+        ${facingsSorted.length > 1 ? `<div class="facing-tabs">
+          ${facingsSorted.map(f => `<div class="facing-tab ${f===af?'active':''}" data-action="setActiveFacing" data-value="${f}">Facing ${f}</div>`).join('')}
+        </div>` : ''}
+        <div class="image-frame">
+          ${fd.imageUrl ? `<img id="facingPreviewImg" src="${escapeHtml(fd.imageUrl)}" alt="Ideal planogram — Facing ${af}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+            <div class="empty" style="display:none;">Couldn't load that image URL.</div>`
+            : `<div class="empty">No reference image yet for Facing ${af}.</div>`}
+        </div>
+        <div class="image-url-edit">
+          <input data-bind="imageUrl" data-facing="${af}" class="mono" type="text" placeholder="Ideal planogram image URL for Facing ${af}" value="${escapeHtml(fd.imageUrl)}" />
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="view-toggle">
+          <button class="${state.viewMode==='configure'?'active':''}" data-action="setViewMode" data-value="configure">Configure</button>
+          <button class="${state.viewMode==='names'?'active':''}" data-action="setViewMode" data-value="names">JSON · names</button>
+          <button class="${state.viewMode==='ids'?'active':''}" data-action="setViewMode" data-value="ids">JSON · IDs</button>
+        </div>
+
+        ${state.viewMode === 'configure' ? configureHTML(fd, af) : jsonViewHTML(state.viewMode === 'names')}
+      </div>
+    </div>
+
+    ${savedStripHTML(false)}
+  </main>`;
+}
+
+function configureHTML(fd, af){
+  if(!fd.racks.length){
+    return `
+      <div class="empty-state">No racks yet for Facing ${af}. Add the first rack to start placing products.</div>
+      <div class="rack-list-footer" style="margin-top:12px;">
+        <button class="btn btn-sm" data-action="addRack">+ Add rack</button>
+      </div>`;
+  }
+  return `
+    <div class="rack-list">
+      ${fd.racks.map(rack => rackCardHTML(rack)).join('')}
+    </div>
+    <div class="rack-list-footer" style="margin-top:12px;">
+      <button class="btn btn-sm" data-action="addRack">+ Add rack</button>
+      ${state.rackClipboard ? `<button class="btn btn-sm" data-action="pasteRack" title="Paste copied rack">⧉ Paste "${escapeHtml(state.rackClipboard.name)}"</button>` : ''}
+    </div>`;
+}
+
+function rackCardHTML(rack){
+  return `
+  <div class="rack-card">
+    <div class="rack-head">
+      <input data-bind="rackName" data-rack-id="${rack.id}" value="${escapeHtml(rack.name)}" />
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm" data-action="copyRack" data-rack-id="${rack.id}" title="Copy this rack">⧉ copy</button>
+      ${state.rowClipboard ? `<button class="btn btn-ghost btn-sm" data-action="pasteRow" data-rack-id="${rack.id}" title="Paste copied row here">⧉ paste row</button>` : ''}
+      <button class="btn btn-ghost btn-sm" data-action="addRow" data-rack-id="${rack.id}">+ shelf row</button>
+      <button class="btn btn-ghost btn-sm" data-action="removeRack" data-rack-id="${rack.id}" title="Remove rack">✕</button>
+    </div>
+    <div class="rack-body">
+      ${rack.rows.map((row, idx) => shelfRowHTML(rack.id, row, idx)).join('') || '<div class="hint" style="padding:6px 2px;">No shelf rows yet.</div>'}
+    </div>
+  </div>`;
+}
+
+function shelfRowHTML(rackId, row, rowIndex){
+  const runs = runLengthEncode(row);
+  return `
+  <div class="shelf-row">
+    <span class="row-label">Row ${rowIndex+1}</span>
+    <button class="row-remove" data-action="removeRow" data-rack-id="${rackId}" data-row="${rowIndex}" title="Remove row">✕</button>
+    ${row.length ? `<button class="row-copy" data-action="copyRow" data-rack-id="${rackId}" data-row="${rowIndex}" title="Copy this row">⧉</button>` : ''}
+    ${runs.map((r, ri) => `
+      <div class="chip">
+        ${ri > 0 ? `<button data-action="moveRun" data-dir="-1" data-rack-id="${rackId}" data-row="${rowIndex}" data-start="${r.start}" title="Move left">‹</button>` : ''}
+        <span class="pname" title="${escapeHtml(nameForId(r.id))}">${escapeHtml(nameForId(r.id))}</span>
+        <span class="count">×${r.count}</span>
+        <button data-action="bumpRun" data-delta="1" data-rack-id="${rackId}" data-row="${rowIndex}" data-start="${r.start}" title="Add one facing">+</button>
+        <button data-action="bumpRun" data-delta="-1" data-rack-id="${rackId}" data-row="${rowIndex}" data-start="${r.start}" title="Remove one facing">−</button>
+        ${ri < runs.length-1 ? `<button data-action="moveRun" data-dir="1" data-rack-id="${rackId}" data-row="${rowIndex}" data-start="${r.start}" title="Move right">›</button>` : ''}
+        <button class="del" data-action="removeRun" data-rack-id="${rackId}" data-row="${rowIndex}" data-start="${r.start}" data-count="${r.count}" title="Remove product">×</button>
+      </div>`).join('')}
+    <button class="add-chip-btn" data-action="openPicker" data-rack-id="${rackId}" data-row="${rowIndex}">+ product</button>
+  </div>`;
+}
+
+function jsonViewHTML(useNames){
+  const obj = buildAssetJSON(useNames);
+  return `
+    <div class="json-toolbar">
+      <div class="hint" style="margin:0;flex:1;">Edit or paste JSON below, then Apply to push it into the rack builder.</div>
+      <button class="btn btn-ghost btn-sm" data-action="setViewMode" data-value="${useNames?'names':'ids'}">Reset</button>
+      <button class="btn btn-sm" data-action="copyJson" data-names="${useNames?1:0}">Copy</button>
+      <button class="btn btn-accent btn-sm" data-action="applyJsonEdit" data-names="${useNames?1:0}">Apply changes</button>
+    </div>
+    <textarea id="jsonEditArea" class="json-view mono" spellcheck="false">${escapeHtml(JSON.stringify(obj, null, 2))}</textarea>`;
+}
+
+/* ---------- saved assets strip ---------- */
+function savedStripHTML(compact){
+  if(!state.savedAssets.length) return '';
+  return `
+  <div class="saved-strip">
+    <h4>Saved assets (${state.savedAssets.length})</h4>
+    <div class="saved-list">
+      ${state.savedAssets.map((a, i) => `
+        <div class="saved-card">
+          <div class="aid">#${a.AssetDefinitionIds[0]}</div>
+          <div class="meta">Case ${a.Case} · ${a.Configuration.length} facing${a.Configuration.length>1?'s':''} · ${a.Configuration.reduce((s,f)=>s+f.RackInformation.length,0)} racks</div>
+          <div class="row">
+            <button class="btn btn-ghost btn-sm" data-action="editSaved" data-index="${i}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-action="removeSaved" data-index="${i}">Remove</button>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- product drawer ---------- */
+function drawerHTML(){
+  return `
+  <div class="drawer-overlay" data-action="closeDrawerOverlay">
+    <div class="drawer">
+      <h3>Manage products</h3>
+      <div class="sub">Import your Excel/CSV sheet (Product Name + Product ID). Columns can be in either order — the header row is auto-detected.</div>
+
+      <section>
+        <label class="small">Upload file</label>
+        <div class="dropzone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.txt,.tsv" style="width:100%;" />
+          <div style="margin-top:8px;">Accepts <b>.xlsx</b>, <b>.xls</b>, <b>.csv</b>, or <b>.tsv</b></div>
+        </div>
+      </section>
+
+      <section>
+        <label class="small">…or paste rows</label>
+        <textarea id="pasteArea" class="mono" placeholder="Product Name, Product ID
+Coca-Cola 390ml, 10629468
+Sprite Can 330ml, 10629469"></textarea>
+        <div class="manual-add" style="margin-top:8px;">
+          <button class="btn btn-sm" data-action="importPaste">Import pasted rows</button>
+        </div>
+      </section>
+
+      <section>
+        <label class="small">Add one manually</label>
+        <div class="manual-add">
+          <input id="manualName" placeholder="Product name" />
+          <input id="manualId" class="mono" placeholder="Product ID" inputmode="numeric" style="width:110px;" />
+          <button class="btn btn-sm" data-action="manualAdd">Add</button>
+        </div>
+      </section>
+
+      <section>
+        <label class="small">Loaded products (${state.products.length})</label>
+        ${state.products.length ? `
+        <div class="table-scroll">
+          <table class="product-table">
+            <thead><tr><th>Name</th><th>ID</th><th></th></tr></thead>
+            <tbody>
+              ${state.products.map(p => `<tr><td>${escapeHtml(p.name)}</td><td class="pid">${p.id}</td><td><span class="del" data-action="deleteProduct" data-id="${p.id}">✕</span></td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<div class="hint">Nothing imported yet.</div>`}
+      </section>
+
+      <button class="btn" style="width:100%;" data-action="closeDrawer">Done</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- product picker modal ---------- */
+function pickerHTML(){
+  const p = state.picker;
+  const q = (p.search || '').toLowerCase();
+  const matches = state.products.filter(pr => pr.name.toLowerCase().includes(q) || String(pr.id).includes(q)).slice(0, 40);
+  return `
+  <div class="picker-overlay" data-action="closePicker">
+    <div class="picker-modal">
+      <h4>Add product to ${p.rowLabel}</h4>
+      <input id="pickerSearch" placeholder="Search by name or ID…" />
+      <div class="picker-results">
+        ${state.products.length === 0 ? `<div class="picker-empty">No products loaded — import your sheet from “Products” in the top bar first.</div>` :
+          matches.length ? matches.map(m => `
+            <div class="picker-item ${p.selectedId===m.id?'selected':''}" data-action="pickerSelect" data-id="${m.id}">
+              <span>${escapeHtml(m.name)}</span><span class="pid">#${m.id}</span>
+            </div>`).join('') : `<div class="picker-empty">No matches.</div>`}
+      </div>
+      <div class="picker-count-row">
+        <span class="hint" style="margin:0;">Facing count</span>
+        <input id="pickerCount" type="number" min="1" value="${p.count}" class="mono" />
+        <div style="flex:1;"></div>
+        <button class="btn btn-ghost btn-sm" data-action="closePicker">Cancel</button>
+        <button class="btn btn-accent btn-sm" data-action="pickerConfirm" ${p.selectedId==null?'disabled':''}>Add</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================= EVENT HANDLING ============================= */
+const app = document.getElementById('app');
+
+app.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+
+  switch(action){
+    case 'triggerImportJson': document.getElementById('importJsonInput').click(); break;
+    case 'openDrawer': state.drawerOpen = true; render(); break;
+    case 'closeDrawer': state.drawerOpen = false; render(); break;
+    case 'closeDrawerOverlay': {
+      if(e.target !== el) break; // only close when the backdrop itself was clicked
+      state.drawerOpen = false; render();
+      break;
+    }
+
+    case 'setCase': state.current.case = Number(el.dataset.value); render(); break;
+
+    case 'toggleFacing': {
+      const v = Number(el.dataset.value);
+      const idx = state.current.facings.indexOf(v);
+      if(idx === -1){ state.current.facings.push(v); ensureFacingData(v); }
+      else { state.current.facings.splice(idx,1); }
+      render();
+      break;
+    }
+    case 'addCustomFacing': {
+      const inp = document.getElementById('customFacingInput');
+      const v = Number(inp.value);
+      if(!isNaN(v) && inp.value !== '' && !state.current.facings.includes(v)){
+        state.current.facings.push(v); ensureFacingData(v);
+      }
+      render();
+      break;
+    }
+
+    case 'startBuilding': {
+      if(!state.current.assetId || state.current.facings.length===0) break;
+      state.stage = 'build';
+      state.activeFacing = [...state.current.facings].sort((a,b)=>a-b)[0];
+      render();
+      break;
+    }
+    case 'editDetails': state.stage = 'setup'; render(); break;
+    case 'cancelEditDetails': state.stage = 'build'; render(); break;
+
+    case 'newAsset': resetCurrent(); state.stage = 'setup'; render(); break;
+
+    case 'setActiveFacing': state.activeFacing = Number(el.dataset.value); render(); break;
+    case 'setViewMode': state.viewMode = el.dataset.value; render(); break;
+
+    case 'addRack': {
+      const fd = state.current.facingData[state.activeFacing];
+      fd.racks.push({ id: uid(), name: 'Rack ' + (fd.racks.length+1), rows: [[]] });
+      render();
+      break;
+    }
+    case 'removeRack': {
+      const fd = state.current.facingData[state.activeFacing];
+      fd.racks = fd.racks.filter(r => r.id !== el.dataset.rackId);
+      render();
+      break;
+    }
+    case 'addRow': {
+      const r = findRack(el.dataset.rackId);
+      if(r) r.rows.push([]);
+      render();
+      break;
+    }
+    case 'removeRow': {
+      const r = findRack(el.dataset.rackId);
+      if(r) r.rows.splice(Number(el.dataset.row), 1);
+      render();
+      break;
+    }
+
+    case 'openPicker': {
+      state.picker = {
+        rackId: el.dataset.rackId,
+        row: Number(el.dataset.row),
+        rowLabel: 'Row ' + (Number(el.dataset.row)+1),
+        search: '',
+        selectedId: null,
+        count: 1
+      };
+      render();
+      break;
+    }
+    case 'closePicker': {
+      if(e.target !== el) break; // ignore bubbled clicks from inside the modal
+      state.picker = null; render();
+      break;
+    }
+    case 'pickerSelect': state.picker.selectedId = Number(el.dataset.id); render(); break;
+    case 'pickerConfirm': {
+      const cnt = Math.max(1, Number(document.getElementById('pickerCount').value) || 1);
+      const r = findRack(state.picker.rackId);
+      if(r && state.picker.selectedId != null){
+        const row = r.rows[state.picker.row];
+        for(let i=0;i<cnt;i++) row.push(state.picker.selectedId);
+      }
+      state.picker = null;
+      render();
+      break;
+    }
+
+    case 'removeRun': {
+      const r = findRack(el.dataset.rackId);
+      if(r){
+        const row = r.rows[Number(el.dataset.row)];
+        row.splice(Number(el.dataset.start), Number(el.dataset.count));
+      }
+      render();
+      break;
+    }
+    case 'bumpRun': {
+      const r = findRack(el.dataset.rackId);
+      if(r){
+        const row = r.rows[Number(el.dataset.row)];
+        const start = Number(el.dataset.start);
+        const delta = Number(el.dataset.delta);
+        const id = row[start];
+        if(delta > 0){ row.splice(start, 0, id); }
+        else {
+          // find run length at start to know max removable, keep at least 1
+          const runs = runLengthEncode(row);
+          const run = runs.find(x => x.start === start);
+          if(run && run.count > 1) row.splice(start, 1);
+        }
+      }
+      render();
+      break;
+    }
+    case 'moveRun': {
+      const r = findRack(el.dataset.rackId);
+      if(r){
+        const rowIdx = Number(el.dataset.row);
+        const row = r.rows[rowIdx];
+        const runs = runLengthEncode(row);
+        const i = runs.findIndex(x => x.start === Number(el.dataset.start));
+        const dir = Number(el.dataset.dir);
+        const j = i + dir;
+        if(j >= 0 && j < runs.length){
+          const tmp = runs[i]; runs[i] = runs[j]; runs[j] = tmp;
+          r.rows[rowIdx] = rebuildRowFromRuns(runs);
+        }
+      }
+      render();
+      break;
+    }
+
+    case 'copyJson': {
+      const obj = buildAssetJSON(el.dataset.names === '1');
+      navigator.clipboard.writeText(JSON.stringify(obj, null, 2)).then(() => showToast('Copied to clipboard'));
+      break;
+    }
+
+    case 'saveAsset': {
+      const obj = buildAssetJSON(false);
+      if(state.editingSavedIndex !== null){
+        state.savedAssets[state.editingSavedIndex] = obj;
+        showToast('Asset #' + obj.AssetDefinitionIds[0] + ' updated');
+      } else {
+        state.savedAssets.push(obj);
+        showToast('Asset #' + obj.AssetDefinitionIds[0] + ' saved');
+      }
+      resetCurrent();
+      state.stage = 'setup';
+      render();
+      break;
+    }
+    case 'editSaved': {
+      const i = Number(el.dataset.index);
+      loadAssetIntoBuilder(state.savedAssets[i], i);
+      break;
+    }
+
+    case 'copyRack': {
+      const r = findRack(el.dataset.rackId);
+      if(r){ state.rackClipboard = JSON.parse(JSON.stringify(r)); showToast('Copied "' + r.name + '"'); }
+      render();
+      break;
+    }
+    case 'pasteRack': {
+      const fd = state.current.facingData[state.activeFacing];
+      if(state.rackClipboard && fd){
+        const clone = JSON.parse(JSON.stringify(state.rackClipboard));
+        clone.id = uid();
+        clone.name = clone.name + ' (copy)';
+        fd.racks.push(clone);
+        showToast('Pasted "' + clone.name + '"');
+      }
+      render();
+      break;
+    }
+    case 'copyRow': {
+      const r = findRack(el.dataset.rackId);
+      if(r){
+        state.rowClipboard = r.rows[Number(el.dataset.row)].slice();
+        showToast('Row copied (' + state.rowClipboard.length + ' items)');
+      }
+      render();
+      break;
+    }
+    case 'pasteRow': {
+      const r = findRack(el.dataset.rackId);
+      if(r && state.rowClipboard){
+        r.rows.push(state.rowClipboard.slice());
+        showToast('Row pasted');
+      }
+      render();
+      break;
+    }
+
+    case 'applyJsonEdit': {
+      const ta = document.getElementById('jsonEditArea');
+      if(ta) applyJsonEdit(ta.value, el.dataset.names === '1');
+      break;
+    }
+    case 'removeSaved': {
+      state.savedAssets.splice(Number(el.dataset.index), 1);
+      render();
+      break;
+    }
+
+    case 'exportAll': {
+      const data = JSON.stringify(state.savedAssets, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'planogram-assets.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      break;
+    }
+
+    case 'importPaste': {
+      const ta = document.getElementById('pasteArea');
+      importRows(rowsFromText(ta.value));
+      break;
+    }
+    case 'manualAdd': {
+      const name = document.getElementById('manualName').value.trim();
+      const id = Number(document.getElementById('manualId').value.replace(/[^0-9]/g,''));
+      if(name && id){
+        const map = new Map(state.products.map(p => [p.id, p]));
+        map.set(id, { id, name });
+        state.products = Array.from(map.values()).sort((a,b)=>a.name.localeCompare(b.name));
+        document.getElementById('manualName').value='';
+        document.getElementById('manualId').value='';
+        showToast('Product added');
+        render();
+      }
+      break;
+    }
+    case 'deleteProduct': {
+      state.products = state.products.filter(p => p.id !== Number(el.dataset.id));
+      render();
+      break;
+    }
+  }
+});
+
+app.addEventListener('change', e => {
+  if(e.target.id === 'fileInput' && e.target.files.length){
+    handleFile(e.target.files[0]);
+  }
+  if(e.target.id === 'importJsonInput' && e.target.files.length){
+    handleImportJsonFile(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+app.addEventListener('input', e => {
+  const t = e.target;
+  if(t.matches('[data-bind="assetId"]')){
+    state.current.assetId = t.value.replace(/[^0-9]/g,'');
+  }
+  else if(t.matches('[data-bind="imageUrl"]')){
+    const f = t.dataset.facing;
+    ensureFacingData(f);
+    state.current.facingData[f].imageUrl = t.value;
+    const img = document.getElementById('facingPreviewImg');
+    if(img && String(state.activeFacing) === String(f)) img.src = t.value;
+  }
+  else if(t.matches('[data-bind="rackName"]')){
+    const r = findRack(t.dataset.rackId);
+    if(r) r.name = t.value;
+  }
+  else if(t.id === 'pickerSearch'){
+    state.picker.search = t.value;
+    const results = document.querySelector('.picker-results');
+    if(results){
+      const q = t.value.toLowerCase();
+      const matches = state.products.filter(pr => pr.name.toLowerCase().includes(q) || String(pr.id).includes(q)).slice(0,40);
+      results.innerHTML = state.products.length === 0
+        ? `<div class="picker-empty">No products loaded — import your sheet from “Products” in the top bar first.</div>`
+        : matches.length ? matches.map(m => `
+            <div class="picker-item ${state.picker.selectedId===m.id?'selected':''}" data-action="pickerSelect" data-id="${m.id}">
+              <span>${escapeHtml(m.name)}</span><span class="pid">#${m.id}</span>
+            </div>`).join('') : `<div class="picker-empty">No matches.</div>`;
+    }
+  }
+});
+
+/* ============================= INIT ============================= */
+render();
+</script>
+</body>
+</html>
